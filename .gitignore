@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+
+# IDE
+*.idea
+
+# Mac Filesystem
+*.DS_Store
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# confidential
+*.conf
+
+# Telethon
+bot.session
+
+# Logs
+*.log
