@@ -1,23 +1,29 @@
-from telethon import events
+__all__ = []
+
+
+from telethon.errors.rpcerrorlist import PeerIdInvalidError
 
 import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from pathlib import Path
 from threading import Thread
+import asyncio
 
-
+from bot.launch_bot import bot, users
 
 
 class NewReportHandler:
-    def __init__(self):
+    def __init__(self, loop):
         self._handler = PatternMatchingEventHandler(
             patterns=["*"], 
             ignore_patterns=None,
             ignore_directories=False,
             case_sensitive=False
         )
-        self._handler.on_created = self._on_created
+        self._handler.on_created = self.__on_created
+
+        self._loop = loop
 
         self._report_dir = None
         self._observer = None
@@ -55,44 +61,47 @@ class NewReportHandler:
         self._observer.schedule(self._handler, path, recursive=True)
 
 
-    def run_observer(self, upd_time=60*30):
+    def run_observer(self):
         self._observer.start()
         try:
             while True:
-                time.sleep(upd_time)
+                time.sleep(1)
         except KeyboardInterrupt:
+            print('Exit Observer')
             self._observer.stop()
             self._observer.join()
         
 
-    def _on_created(self, event):
-        print(f"hey, {event.src_path} has been created!")
+    def __on_created(self, file_event):
+        asyncio.run_coroutine_threadsafe(self._async_handler(file_event), self._loop)
+
+
+    async def _async_handler(self, file_event):
+        for user in users:
+            if user.is_authorized():
+                asyncio.create_task(self.__send_message(user, 'Hello, user!'))
+
+        print(f"hey, {file_event.src_path} has been created!")
+
+
+    async def __send_message(self, user, msg, timeout=10):
+        try:
+            await asyncio.wait_for(
+                bot.send_message(user._nickname, msg), timeout=timeout)
+        except PeerIdInvalidError:
+            print("Unable to send message to user: {}".format(user._nickname))
 
 
 
+def new_document_event_handler():
+    loop = asyncio.get_event_loop()
+
+    handler = NewReportHandler(loop)
+    handler.report_dir = "reports"
+    handler.create_observer()
+
+    watchdog_thread = Thread(target=handler.run_observer, name='Watchdog', daemon=True)
+    watchdog_thread.start()
 
 
-handler = NewReportHandler()
-handler.report_dir = "reports"
-handler.create_observer()
-
-watchdog_thread = Thread(target=handler.run_observer, name='Watchdog', daemon=True, args=(60*30,))
-watchdog_thread.start()
-# handler.run_observer(upd_time=1)
-
-
-
-
-
-from bot.launch_bot import bot
-
-@bot.on(events.NewMessage)
-async def my_event_handler(event):
-    if 'hello' in event.raw_text:
-        await event.reply('hi!')
-
-
-
-
-
-
+new_document_event_handler()
