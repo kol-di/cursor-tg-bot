@@ -1,7 +1,7 @@
 __all__ = []
 
 
-from telethon.errors.rpcerrorlist import PeerIdInvalidError
+from telethon.errors.rpcerrorlist import PeerIdInvalidError, MessageTooLongError
 
 import time
 from watchdog.observers import Observer
@@ -11,6 +11,7 @@ from threading import Thread
 import asyncio
 
 from bot.launch_bot import bot, users
+from .report_builder import ReportBuilder
 
 
 class NewReportHandler:
@@ -73,21 +74,33 @@ class NewReportHandler:
         
 
     def __on_created(self, file_event):
-        asyncio.run_coroutine_threadsafe(self._async_handler(file_event), self._loop)
+        asyncio.run_coroutine_threadsafe(self._async_handler(file_event.src_path), self._loop)
 
 
-    async def _async_handler(self, file_event):
+    async def _async_handler(self, file):
         for user in users:
             if user.is_authorized():
-                asyncio.create_task(self.__send_message(user, 'Hello, user!'))
+                asyncio.create_task(self.__send_message(user, file))
 
-        print(f"hey, {file_event.src_path} has been created!")
+        print(f"hey, {file} has been created!")
 
 
-    async def __send_message(self, user, msg, timeout=10):
+    async def __send_message(self, user, file, timeout=10, file_size_limit=30):
+        print(file)
+        report = ReportBuilder(file)
+        report.cols = ['RegNumber', 'ContractStatus']
+
         try:
-            await asyncio.wait_for(
-                bot.send_message(user._nickname, msg), timeout=timeout)
+            if report.size < file_size_limit:
+                try:
+                    await asyncio.wait_for(
+                        bot.send_message(user._nickname, str(report)), timeout=timeout)
+                except MessageTooLongError:
+                    await asyncio.wait_for(
+                        bot.send_file(user._nickname, report.get_file()), timeout=timeout)
+            else:
+                await asyncio.wait_for(
+                    bot.send_file(user._nickname, report.get_file()), timeout=timeout)
         except PeerIdInvalidError:
             print("Unable to send message to user: {}".format(user._nickname))
 
