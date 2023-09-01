@@ -78,20 +78,23 @@ class NewReportHandler:
 
 
     async def _async_handler(self, file):
+        report = self.create_report(file)
+
         for user in users:
             if user.is_authorized():
-                asyncio.create_task(self.__send_message(user, file))
-
-        print(f"hey, {file} has been created!")
+                asyncio.create_task(self.__send_report(user, report))
 
 
-    async def __send_message(self, user, file, timeout=10, file_size_limit=30):
-        print(file)
+    @staticmethod
+    def create_report(file):
         report = ReportBuilder(file)
         report.cols = ['RegNumber', 'ContractStatus']
+        return report
 
+
+    async def __send_report(self, user, report, timeout=10, rowcount_limit=30, colcount_limit=1):
         try:
-            if report.size < file_size_limit:
+            if report.size <= rowcount_limit and len(report.cols) <= colcount_limit:
                 try:
                     await asyncio.wait_for(
                         bot.send_message(user._nickname, str(report)), timeout=timeout)
@@ -101,8 +104,10 @@ class NewReportHandler:
             else:
                 await asyncio.wait_for(
                     bot.send_file(user._nickname, report.get_file()), timeout=timeout)
+                
         except PeerIdInvalidError:
             print("Unable to send message to user: {}".format(user._nickname))
+
 
 
 
