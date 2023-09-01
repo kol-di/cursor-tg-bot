@@ -10,7 +10,7 @@ from pathlib import Path
 from threading import Thread
 import asyncio
 
-from bot.launch_bot import bot, users
+from bot.launch_bot import bot, users, user_access
 from .report_builder import ReportBuilder
 
 
@@ -81,7 +81,8 @@ class NewReportHandler:
         report = self.create_report(file)
 
         for user in users:
-            if user.is_authorized():
+            # if user.is_authorized():
+            if user_access.is_granted(user, 'ContractsNoItems'):
                 asyncio.create_task(self.__send_report(user, report))
 
 
@@ -97,16 +98,16 @@ class NewReportHandler:
             if report.size <= rowcount_limit and len(report.cols) <= colcount_limit:
                 try:
                     await asyncio.wait_for(
-                        bot.send_message(user._nickname, str(report)), timeout=timeout)
+                        bot.send_message(user.nickname, str(report)), timeout=timeout)
                 except MessageTooLongError:
                     await asyncio.wait_for(
-                        bot.send_file(user._nickname, report.get_file()), timeout=timeout)
+                        bot.send_file(user.nickname, report.get_file()), timeout=timeout)
             else:
                 await asyncio.wait_for(
-                    bot.send_file(user._nickname, report.get_file()), timeout=timeout)
+                    bot.send_file(user.nickname, report.get_file()), timeout=timeout)
                 
         except PeerIdInvalidError:
-            print("Unable to send message to user: {}".format(user._nickname))
+            print("Unable to send message to user: {}".format(user.nickname))
 
 
 
