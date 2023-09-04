@@ -48,19 +48,39 @@ class UserAccess:
         self, 
         users: Union[List[User], User]
     ) -> None:
-        for user in users:
-            user._authorized = True
-            if user not in self._users:
-                self._users.append(user)
+        users = self._to_list(users)
+
+        for new_user in users:
+            for i, old_user in enumerate(self._users):
+                if new_user == old_user:
+                    self._users[i]._authorized = True
+
+                    for right in self._alias_to_right.keys():   # for now give all rights to all users w/ access
+                        self.grant_acces(self._users[i], right)
+
+                    break
+            else:   # no break occured
+                new_user._authorized = True
+
+                for right in self._alias_to_right.keys():      # for now give all rights to all users w/ access
+                    self.grant_acces(new_user, right)
+
+                self._users.append(new_user)
 
     def add_unauthorized(
         self, 
         users: Union[List[User], User]
     ) -> None:
-        for user in users:
-            user._authorized = False
-            if user not in self._users:
-                self._users.append(user)
+        users = self._to_list(users)
+
+        for new_user in users:
+            for i, old_user in enumerate(self._users):
+                if new_user == old_user:
+                    self._users[i]._authorized = False
+                    break
+            else:   # no break occured
+                new_user._authorized = False
+                self._users.append(new_user)
 
     def get_authorized_users(self) -> List[User]:
         return [usr for usr in self._users if usr.is_authorized()]
@@ -74,6 +94,8 @@ class UserAccess:
         users: Union[List[User], User],
         alias: str
     ) -> None:
+        users = self._to_list(users)
+
         if self._check_valid_right_alias(alias):
             pass
 
@@ -92,6 +114,8 @@ class UserAccess:
         users: Union[List[User], User],
         alias: str
     ) -> None:
+        users = self._to_list(users)
+
         if self._check_valid_right_alias(alias):
             pass
 
@@ -115,3 +139,9 @@ class UserAccess:
     def _check_valid_right_alias(self, alias: str) -> bool:
         if alias not in self._alias_to_right.keys():
             raise Exception("Unkown acces right")
+        
+    @staticmethod
+    def _to_list(users: Union[List[User], User]):
+        if isinstance(users, User):
+            return [users]
+        return users

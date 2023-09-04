@@ -10,7 +10,7 @@ from pathlib import Path
 from threading import Thread
 import asyncio
 
-from bot.launch_bot import bot, users, user_access
+from bot.launch_bot import bot, user_access
 from .report_builder import ReportBuilder
 
 
@@ -79,9 +79,7 @@ class NewReportHandler:
 
     async def _async_handler(self, file):
         report = self.create_report(file)
-
-        for user in users:
-            # if user.is_authorized():
+        for user in user_access.get_authorized_users():
             if user_access.is_granted(user, 'ContractsNoItems'):
                 asyncio.create_task(self.__send_report(user, report))
 
