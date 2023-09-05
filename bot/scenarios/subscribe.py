@@ -55,18 +55,15 @@ async def all_subscriptions(event):
 
 @bot.on(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX)))
 async def choose_subscription_event_handler(event):
-    print('I entered anyway!')
     sender = await event.get_sender()
 
     user = User(sender.username)
     access_right = event.data.decode()  # data comes in form of bytes and should be converted
 
     if user in user_access.get_authorized_users():
-        print('found authorized user')
 
         if user_access.is_granted(user, access_right):
             async with bot.conversation(sender, timeout=60, exclusive=False, replies_are_responses=True) as conv:
-                print('user already in mailing list')
 
                 ask_msg = await conv.send_message(
                     message="Вы уже подписаны на эту рассылку. Желаете отменить?", 

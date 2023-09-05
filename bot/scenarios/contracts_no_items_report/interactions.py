@@ -9,13 +9,18 @@ from watchdog.events import PatternMatchingEventHandler
 from pathlib import Path
 from threading import Thread
 import asyncio
+import concurrent.futures as pool
 
 from bot.launch_bot import bot, user_access
-from .report_builder import ReportBuilder
+from bot.access import REC_CONTRACTS_NO_ITEMS, REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223
+from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
 
-class NewReportHandler:
-    def __init__(self, loop):
+class ReportHandler:
+    def __init__(self, report_type, loop):
+        self._report_type = report_type
+        self._loop = loop
+
         self._handler = PatternMatchingEventHandler(
             patterns=["*"], 
             ignore_patterns=None,
@@ -23,8 +28,6 @@ class NewReportHandler:
             case_sensitive=False
         )
         self._handler.on_created = self.__on_created
-
-        self._loop = loop
 
         self._report_dir = None
         self._observer = None
@@ -74,35 +77,43 @@ class NewReportHandler:
         
 
     def __on_created(self, file_event):
-        asyncio.run_coroutine_threadsafe(self._async_handler(file_event.src_path), self._loop)
+        asyncio.run_coroutine_threadsafe(self.__send_reports(file_event.src_path), self._loop)
 
 
-    async def _async_handler(self, file):
-        report = self.create_report(file)
+    async def __send_reports(self, file):
+        report = ReportBuilder()
+        report.read_data(file)
+        report.cols = REPORTS_PROPERTIES[self._report_type].columns
+
         for user in user_access.get_authorized_users():
-            if user_access.is_granted(user, 'ContractsNoItems'):
+            if user_access.is_granted(user, self._report_type):
                 asyncio.create_task(self.__send_report(user, report))
 
 
-    @staticmethod
-    def create_report(file):
-        report = ReportBuilder(file)
-        report.cols = ['RegNumber', 'ContractStatus']
-        return report
-
-
     async def __send_report(self, user, report, timeout=10, rowcount_limit=30, colcount_limit=1):
+        filename_prefix = REPORTS_PROPERTIES[self._report_type].filename_prefix
+
         try:
             if report.size <= rowcount_limit and len(report.cols) <= colcount_limit:
                 try:
                     await asyncio.wait_for(
-                        bot.send_message(user.nickname, str(report)), timeout=timeout)
+                        bot.send_message(
+                            user.nickname, 
+                            str(report)), 
+                            timeout=timeout)
+                    
                 except MessageTooLongError:
                     await asyncio.wait_for(
-                        bot.send_file(user.nickname, report.get_file()), timeout=timeout)
+                        bot.send_file(
+                            user.nickname, 
+                            report.create_file(filename_prefix)), 
+                            timeout=timeout)
             else:
                 await asyncio.wait_for(
-                    bot.send_file(user.nickname, report.get_file()), timeout=timeout)
+                    bot.send_file(
+                        user.nickname, 
+                        report.create_file(filename_prefix)), 
+                        timeout=timeout)
                 
         except PeerIdInvalidError:
             print("Unable to send message to user: {}".format(user.nickname))
@@ -110,10 +121,10 @@ class NewReportHandler:
 
 
 
-def new_document_event_handler():
+def spawn_document_handlers():
     loop = asyncio.get_event_loop()
 
-    handler = NewReportHandler(loop)
+    handler = ReportHandler(REC_CONTRACTS_NO_ITEMS, loop)
     handler.report_dir = "reports"
     handler.create_observer()
 
@@ -121,4 +132,4 @@ def new_document_event_handler():
     watchdog_thread.start()
 
 
-new_document_event_handler()
+spawn_document_handlers()
