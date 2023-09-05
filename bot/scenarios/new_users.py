@@ -7,7 +7,7 @@ from bot.launch_bot import ACCESS_CODE
 
 
 @bot.on(events.NewMessage(pattern='/enable'))
-async def my_event_handler(event):
+async def enable_event_handler(event):
     sender = await event.get_sender()
     user = User(sender.username)
 

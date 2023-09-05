@@ -27,6 +27,7 @@ user_access = UserAccess()
 # associate all event handlers with bot
 from .scenarios.contracts_no_items_report.interactions import *
 from .scenarios.new_users import *
+from .scenarios.subscribe import *
 
 
 bot.start()

@@ -18,6 +18,15 @@ class User:
         return self._authorized
     
 
+# used to match recipient right contants
+_RECIPIENT_RIGHT_PREFIX = '#REC_'
+
+# ContractStatus is not null and no ContractItems
+REC_CONTRACTS_NO_ITEMS = _RECIPIENT_RIGHT_PREFIX + 'ContractsNoItems'     
+# 223 Однопоз однолот с типом лс без контракта
+REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223 = _RECIPIENT_RIGHT_PREFIX + '#REC_OdnopozOdnolotLsNoContract223'              
+    
+
 
 class UserAccessWarning(Warning):
     pass
@@ -31,17 +40,21 @@ class KnownUserWarning(UserAccessWarning):
 class UserRightsWarning(UserAccessWarning):
     pass
 
+warnings.filterwarnings(action='ignore', category=UserRightsWarning)
 
 class UserAccess:
 
     def __init__(self):
         # all users who tried to access the bot
         self._users: List[User] = []
-        # users with access to mailing for contracts with no items and invalid status
-        self._contracts_no_items_recip: List[User] = []
+
+        # lists of users subscribed to certain mailings
+        self._recip_contracts_no_items: List[User] = []
+        self._recip_odnopoz_odnolot_ls_no_contract_223: List[User] = []
 
         self._alias_to_right = {
-            'ContractsNoItems': self._contracts_no_items_recip
+            REC_CONTRACTS_NO_ITEMS: self._recip_contracts_no_items, 
+            REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223: self._recip_odnopoz_odnolot_ls_no_contract_223
         }
 
     def add_authorized(
@@ -55,15 +68,15 @@ class UserAccess:
                 if new_user == old_user:
                     self._users[i]._authorized = True
 
-                    for right in self._alias_to_right.keys():   # for now give all rights to all users w/ access
-                        self.grant_acces(self._users[i], right)
+                    # for right in self._alias_to_right.keys():   # for now give all rights to all users w/ access
+                    #     self.grant_acces(self._users[i], right)
 
                     break
             else:   # no break occured
                 new_user._authorized = True
 
-                for right in self._alias_to_right.keys():      # for now give all rights to all users w/ access
-                    self.grant_acces(new_user, right)
+                # for right in self._alias_to_right.keys():      # for now give all rights to all users w/ access
+                #     self.grant_acces(new_user, right)
 
                 self._users.append(new_user)
 
@@ -77,6 +90,8 @@ class UserAccess:
             for i, old_user in enumerate(self._users):
                 if new_user == old_user:
                     self._users[i]._authorized = False
+                    for right_alias in self._alias_to_right.keys():
+                        self.remove_acces(self._users[i], right_alias)
                     break
             else:   # no break occured
                 new_user._authorized = False
@@ -138,7 +153,7 @@ class UserAccess:
 
     def _check_valid_right_alias(self, alias: str) -> bool:
         if alias not in self._alias_to_right.keys():
-            raise Exception("Unkown acces right")
+            raise Exception(f"Unkown acces right: {alias}")
         
     @staticmethod
     def _to_list(users: Union[List[User], User]):
