@@ -67,17 +67,9 @@ class UserAccess:
             for i, old_user in enumerate(self._users):
                 if new_user == old_user:
                     self._users[i]._authorized = True
-
-                    # for right in self._alias_to_right.keys():   # for now give all rights to all users w/ access
-                    #     self.grant_acces(self._users[i], right)
-
                     break
             else:   # no break occured
                 new_user._authorized = True
-
-                # for right in self._alias_to_right.keys():      # for now give all rights to all users w/ access
-                #     self.grant_acces(new_user, right)
-
                 self._users.append(new_user)
 
     def add_unauthorized(

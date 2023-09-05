@@ -48,7 +48,6 @@ async def all_subscriptions(event):
                         conv.cancel()
                 case _ as var:
                     warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
-                    # await all_callback.delete()
                     await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
                     conv.cancel()
 
@@ -87,7 +86,6 @@ async def choose_subscription_event_handler(event):
                         conv.cancel()
                     case _ as var:
                         warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
-                        # await del_callback.delete()
                         await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
                         conv.cancel()
 
