@@ -5,76 +5,25 @@ from telethon.errors.rpcerrorlist import PeerIdInvalidError, MessageTooLongError
 
 import time
 from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
+from watchdog.events import FileSystemEventHandler
 from pathlib import Path
-from threading import Thread
 import asyncio
-import concurrent.futures as pool
+from concurrent import futures
 
 from bot.launch_bot import bot, user_access
 from bot.access import REC_CONTRACTS_NO_ITEMS, REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
 
-class ReportHandler:
+
+class Handler(FileSystemEventHandler):
     def __init__(self, report_type, loop):
+        super().__init__()
         self._report_type = report_type
         self._loop = loop
 
-        self._handler = PatternMatchingEventHandler(
-            patterns=["*"], 
-            ignore_patterns=None,
-            ignore_directories=False,
-            case_sensitive=False
-        )
-        self._handler.on_created = self.__on_created
+        self.on_created = self.__on_created
 
-        self._report_dir = None
-        self._observer = None
-
-
-    @property
-    def report_dir(self):
-        return self._report_dir
-    
-    @report_dir.setter
-    def report_dir(self, input_path):
-        path = Path(input_path)
-        if path.exists():
-            pass
-        else:
-            path = Path(__file__).parent / input_path
-            if path.exists():
-                pass
-            else:
-                raise Exception("Invalid path")
-            
-        if path.is_dir():
-            self._report_dir = path
-        else:
-            raise Exception("Path should be a directory")
-        
-
-    def create_observer(self, path=None):
-        if path is None:
-            path = self.report_dir
-        if path is None:
-            raise Exception("No report directory provided")
-        
-        self._observer = Observer()
-        self._observer.schedule(self._handler, path, recursive=True)
-
-
-    def run_observer(self):
-        self._observer.start()
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print('Exit Observer')
-            self._observer.stop()
-            self._observer.join()
-        
 
     def __on_created(self, file_event):
         asyncio.run_coroutine_threadsafe(self.__send_reports(file_event.src_path), self._loop)
@@ -119,17 +68,81 @@ class ReportHandler:
             print("Unable to send message to user: {}".format(user.nickname))
 
 
+class ObserverManager:
+    def __init__(self, handler, report_dir):
+        self._handler = handler
+        self.report_dir = report_dir
+
+        self._observer = None
+
+    @property
+    def report_dir(self):
+        return self._report_dir
+    
+    @report_dir.setter
+    def report_dir(self, input_path):
+        path = Path(input_path)
+        if path.exists():
+            pass
+        else:
+            path = Path(__file__).parent / input_path
+            if path.exists():
+                pass
+            else:
+                raise Exception("Invalid path")
+            
+        if path.is_dir():
+            self._report_dir = path
+        else:
+            raise Exception("Path should be a directory")
+        
+
+    def create_observer(self, path=None):
+        if path is None:
+            path = self.report_dir
+        if path is None:
+            raise Exception("No report directory provided")
+        
+        self._observer = Observer()
+        self._observer.schedule(self._handler, path, recursive=True)
+
+
+    def run_observer(self):
+        self._observer.start()
+        try:
+            while True:
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            print('Exit Observer')
+            self._observer.stop()
+            self._observer.join()
+            
+
+class Watcher:
+    """
+    Runs multiple observers
+    """
+    def __init__(self, observers):
+        self._observers = observers
+
+    def start_all(self):
+        thread_pool = futures.ThreadPoolExecutor(max_workers=len(self._observers))
+        for obs in self._observers:
+            thread_pool.submit(obs.run_observer)
 
 
 def spawn_document_handlers():
     loop = asyncio.get_event_loop()
 
-    handler = ReportHandler(REC_CONTRACTS_NO_ITEMS, loop)
-    handler.report_dir = "reports"
-    handler.create_observer()
+    handler1 = Handler(REC_CONTRACTS_NO_ITEMS, loop)
+    observer_manager1 = ObserverManager(handler1, "reports")
+    observer_manager1.create_observer()
 
-    watchdog_thread = Thread(target=handler.run_observer, name='Watchdog', daemon=True)
-    watchdog_thread.start()
+    handler2 = Handler(REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223, loop)
+    observer_manager2 = ObserverManager(handler2, "reports2")
+    observer_manager2.create_observer()
 
+    watcher = Watcher([observer_manager1, observer_manager2])
+    watcher.start_all()
 
 spawn_document_handlers()
