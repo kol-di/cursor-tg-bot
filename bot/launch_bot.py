@@ -1,6 +1,8 @@
 from telethon import TelegramClient
 import configparser
 import pathlib
+import asyncio
+import threading
 
 from .access import UserAccess
 
@@ -23,15 +25,25 @@ bot = TelegramClient('bot', api_id=api_id, api_hash=api_hash).start(bot_token=bo
 # Not recommended to create multiple instances, please reuse this object
 user_access = UserAccess()
 
+exit_signal = threading.Event()
 
 # associate all event handlers with bot
-from .scenarios.contracts_no_items_report.interactions import *
+from .scenarios.contracts_no_items_report.interactions import spawn_document_handlers
 from .scenarios.new_users import *
 from .scenarios.subscribe import *
 
 
+futures_obs = spawn_document_handlers()
+
 bot.start()
-bot.run_until_disconnected()
+
+loop = asyncio.get_event_loop()
+try:
+    loop.run_until_complete(bot.disconnected)
+except KeyboardInterrupt:
+    exit_signal.set()
+finally:
+    bot.disconnect()
 
 
 

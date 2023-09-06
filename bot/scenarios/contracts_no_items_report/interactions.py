@@ -10,7 +10,7 @@ from pathlib import Path
 import asyncio
 from concurrent import futures
 
-from bot.launch_bot import bot, user_access
+from bot.launch_bot import bot, user_access, exit_signal
 from bot.access import ReportType
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
@@ -109,14 +109,11 @@ class ObserverManager:
 
     def run_observer(self):
         self._observer.start()
-        try:
-            while True:
-                time.sleep(1)
-        except (KeyboardInterrupt, SystemExit):
-            print('Exit Observer')
-            self._observer.stop()
-            self._observer.join()
-            
+        while not exit_signal.is_set():
+            time.sleep(1)
+
+        self._observer.stop()
+        self._observer.join()
 
 class Watcher:
     """
@@ -126,9 +123,13 @@ class Watcher:
         self._observers = observers
 
     def start_all(self):
+        futures_obs = []
+
         thread_pool = futures.ThreadPoolExecutor(max_workers=len(self._observers))
         for obs in self._observers:
-            thread_pool.submit(obs.run_observer)
+            futures_obs.append(thread_pool.submit(obs.run_observer))
+
+        return futures_obs
 
 
 def spawn_document_handlers():
@@ -143,6 +144,4 @@ def spawn_document_handlers():
     observer_manager2.create_observer()
 
     watcher = Watcher([observer_manager1, observer_manager2])
-    watcher.start_all()
-
-spawn_document_handlers()
+    return watcher.start_all()
