@@ -1,5 +1,6 @@
 from typing import List, Union
 import warnings
+from strenum import StrEnum
 
 class User:
     def __init__(self, nickname):
@@ -18,14 +19,15 @@ class User:
         return self._authorized
     
 
-# used to match recipient right contants
+# used to match ReportType constants by tg bot
 _RECIPIENT_RIGHT_PREFIX = '#REC_'
 
-# ContractStatus is not null and no ContractItems
-REC_CONTRACTS_NO_ITEMS = _RECIPIENT_RIGHT_PREFIX + 'ContractsNoItems'     
-# 223 Однопоз однолот с типом лс без контракта
-REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223 = _RECIPIENT_RIGHT_PREFIX + '#REC_OdnopozOdnolotLsNoContract223'              
-    
+
+class ReportType(StrEnum):
+    # ContractStatus is not null and no ContractItems
+    REC_CONTRACTS_NO_ITEMS = _RECIPIENT_RIGHT_PREFIX + 'ContractsNoItems'
+    # 223 Однопоз однолот с типом лс без контракта
+    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223 = _RECIPIENT_RIGHT_PREFIX + 'OdnopozOdnolotLsNoContract223'
 
 
 class UserAccessWarning(Warning):
@@ -53,8 +55,8 @@ class UserAccess:
         self._recip_odnopoz_odnolot_ls_no_contract_223: List[User] = []
 
         self._alias_to_right = {
-            REC_CONTRACTS_NO_ITEMS: self._recip_contracts_no_items, 
-            REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223: self._recip_odnopoz_odnolot_ls_no_contract_223
+            ReportType.REC_CONTRACTS_NO_ITEMS: self._recip_contracts_no_items, 
+            ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223: self._recip_odnopoz_odnolot_ls_no_contract_223
         }
 
     def add_authorized(

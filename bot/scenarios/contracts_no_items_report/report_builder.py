@@ -5,9 +5,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import List
 
-from bot.access import \
-    REC_CONTRACTS_NO_ITEMS, \
-    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223
+from bot.access import ReportType
 
 
 
@@ -18,11 +16,11 @@ class ReportProperties:
 
 
 REPORTS_PROPERTIES = {
-    REC_CONTRACTS_NO_ITEMS: ReportProperties(
+    ReportType.REC_CONTRACTS_NO_ITEMS: ReportProperties(
         columns=['RegNumber', 'ContractStatus'], 
         filename_prefix="Контракты_без_позиций"), 
 
-    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223: ReportProperties(
+    ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223: ReportProperties(
         columns=['RegNumber', 'ContractStatus', 'PublishDate'], 
         filename_prefix="Однопозы_однолоты_ЛС_без_контракта_223"
     )

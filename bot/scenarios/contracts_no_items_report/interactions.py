@@ -11,7 +11,7 @@ import asyncio
 from concurrent import futures
 
 from bot.launch_bot import bot, user_access
-from bot.access import REC_CONTRACTS_NO_ITEMS, REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223
+from bot.access import ReportType
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
 
@@ -134,11 +134,11 @@ class Watcher:
 def spawn_document_handlers():
     loop = asyncio.get_event_loop()
 
-    handler1 = Handler(REC_CONTRACTS_NO_ITEMS, loop)
+    handler1 = Handler(ReportType.REC_CONTRACTS_NO_ITEMS, loop)
     observer_manager1 = ObserverManager(handler1, "reports")
     observer_manager1.create_observer()
 
-    handler2 = Handler(REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223, loop)
+    handler2 = Handler(ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223, loop)
     observer_manager2 = ObserverManager(handler2, "reports2")
     observer_manager2.create_observer()
 

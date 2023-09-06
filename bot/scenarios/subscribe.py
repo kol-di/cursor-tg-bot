@@ -4,10 +4,7 @@ import warnings
 
 from bot.launch_bot import bot, user_access
 from bot.access import User
-from bot.access import \
-    _RECIPIENT_RIGHT_PREFIX, \
-    REC_CONTRACTS_NO_ITEMS, \
-    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223
+from bot.access import ReportType, _RECIPIENT_RIGHT_PREFIX
 
 
 class InvalidInlineQueryParamWarning(Warning):
@@ -104,6 +101,6 @@ async def choose_subscriptio_event_handler(event):
             buttons=[
                 [Button.inline('Все', data='all')], 
 
-                [Button.inline('Контракты без позиций с неверными статусами', data=REC_CONTRACTS_NO_ITEMS),  
-                 Button.inline('223 однопозы однолоты ЛС без контрактов в БД', data=REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223)]
+                [Button.inline('Контракты без позиций с неверными статусами', data=ReportType.REC_CONTRACTS_NO_ITEMS),  
+                 Button.inline('223 однопозы однолоты ЛС без контрактов в БД', data=ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223)]
             ])
