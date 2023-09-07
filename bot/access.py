@@ -20,9 +20,14 @@ class User:
         
         return False
     
+    @property
     def is_authorized(self):
         """Was granated access by admin"""
         return self._authorized
+    
+    @is_authorized.setter
+    def is_authorized(self, true_false):
+        self._authorized = true_false
     
 
 
@@ -101,10 +106,10 @@ class UserAccess(metaclass=Singleton):
                 self._users.append(new_user)
 
     def get_authorized_users(self) -> List[User]:
-        return [usr for usr in self._users if usr.is_authorized()]
+        return [usr for usr in self._users if usr.is_authorized]
 
     def get_unauthorized_users(self) -> List[User]:
-        return [usr for usr in self._users if not usr.is_authorized()]
+        return [usr for usr in self._users if not usr.is_authorized]
     
 
     def grant_acces(
@@ -178,7 +183,7 @@ class UserAccess(metaclass=Singleton):
                         if u in rep_list[1]:    # recipient list
                             user_access_dict[u.nickname]['rights'].append(rep_list[0])    # right identifier
                 else:
-                    user_access_dict[u.nickname['auth']] = False
+                    user_access_dict[u.nickname]['auth'] = False
 
             json.dump(user_access_dict, f)       
             

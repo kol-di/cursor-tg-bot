@@ -13,7 +13,7 @@ async def enable_event_handler(event):
     sender = await event.get_sender()
     user = User(sender.username)
 
-    if not user in user_access.get_authorized_users():
+    if not user in user_access._users:
         user_access.add_unauthorized(user)
 
         async with bot.conversation(sender, timeout=60, replies_are_responses=True) as conv:
