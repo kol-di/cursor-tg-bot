@@ -1,7 +1,7 @@
 from telethon.errors.rpcerrorlist import PeerIdInvalidError, MessageTooLongError
 
 import time
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
 import asyncio
@@ -105,7 +105,7 @@ class ObserverManager:
             raise Exception("No report directory provided")
         
         self._exit_signal = BotManager().thread_exit_signal
-        self._observer = Observer()
+        self._observer = PollingObserver()
         self._observer.schedule(self._handler, path, recursive=True)
 
 
