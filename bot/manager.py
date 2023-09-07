@@ -40,8 +40,9 @@ class BotManager(metaclass=Singleton):
         # main loop
         try:
             self._loop.run_until_complete(self.bot.disconnected)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             self.thread_exit_signal.set()
+            UserAccess().dump_all()
         finally:
             self.bot.disconnect()
 
@@ -49,8 +50,4 @@ class BotManager(metaclass=Singleton):
     async def periodic_exec(func, timeout=60*60):
         while True:
             await asyncio.sleep(timeout)
-            print('about to dump')
             func()
-            print('dump complete')
-
-

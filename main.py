@@ -4,7 +4,9 @@ from config import conf
 
 
 def create_user_access():
-    return UserAccess()
+    user_access = UserAccess()
+    user_access.recover_from_dump()
+    return user_access
 
 def create_bot_manager(api_id, api_hash, bot_token):
     return BotManager(api_id, api_hash, bot_token)

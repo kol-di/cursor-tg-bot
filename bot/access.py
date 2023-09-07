@@ -4,6 +4,7 @@ from strenum import StrEnum
 from pathlib import Path
 from collections import defaultdict
 import json
+from json import JSONDecodeError
 
 from bot.utils.singleton import Singleton
 
@@ -161,15 +162,9 @@ class UserAccess(metaclass=Singleton):
     
 
     def dump_all(self, input_path=None):
-        if input_path is None:
-            input_path = self._dump_filename
-
-        # obtain dump file path
-        path = Path(input_path)
-        if not path.exists():
-            path = Path(__file__).parent / input_path
-        if path.is_dir():
-            path = path / self._dump_filename
+        path = self._construct_path(
+            input_path,
+            self._dump_filename)
 
         # write user access data
         with open(path, 'w+') as f:
@@ -185,7 +180,32 @@ class UserAccess(metaclass=Singleton):
                 else:
                     user_access_dict[u.nickname]['auth'] = False
 
-            json.dump(user_access_dict, f)       
+            json.dump(user_access_dict, f)
+
+
+    def recover_from_dump(self, input_path=None):
+        path = self._construct_path(
+            input_path,
+            self._dump_filename)
+        if not path.exists():   # on startup path doesnt exist
+            return
+
+        with open(path) as f:
+            dump_content = f.read()
+
+        try:
+            user_access_dict = json.loads(dump_content)
+        except JSONDecodeError:
+            return
+        
+        for u_nick, u_data in user_access_dict.items():
+            user = User(u_nick)
+            if u_data['auth']:
+                self.add_authorized(user)
+                for right_alias in u_data['rights']:
+                    self.grant_acces(user, right_alias)
+            else:
+                self.add_unauthorized(user)
             
 
     def _check_valid_right_alias(self, alias: str) -> bool:
@@ -197,3 +217,16 @@ class UserAccess(metaclass=Singleton):
         if isinstance(users, User):
             return [users]
         return users
+    
+    @staticmethod
+    def _construct_path(input_path, candidate_path):
+        if input_path is None:
+            input_path = candidate_path
+
+        path = Path(input_path)
+        if not path.exists():
+            path = Path(__file__).parent / input_path
+        if path.is_dir():
+            path = path / candidate_path
+
+        return path
