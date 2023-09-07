@@ -1,6 +1,9 @@
 from typing import List, Union
 import warnings
 from strenum import StrEnum
+from pathlib import Path
+from collections import defaultdict
+import json
 
 from bot.utils.singleton import Singleton
 
@@ -51,6 +54,8 @@ warnings.filterwarnings(action='ignore', category=UserRightsWarning)
 class UserAccess(metaclass=Singleton):
 
     def __init__(self):
+        self._dump_filename = '.user_access_dump.json'
+
         # all users who tried to access the bot
         self._users: List[User] = []
 
@@ -148,6 +153,35 @@ class UserAccess(metaclass=Singleton):
             pass
 
         return user in self._alias_to_right[alias]
+    
+
+    def dump_all(self, input_path=None):
+        if input_path is None:
+            input_path = self._dump_filename
+
+        # obtain dump file path
+        path = Path(input_path)
+        if not path.exists():
+            path = Path(__file__).parent / input_path
+        if path.is_dir():
+            path = path / self._dump_filename
+
+        # write user access data
+        with open(path, 'w+') as f:
+            user_access_dict = defaultdict(dict)
+            for u in self._users:
+                if u.is_authorized:
+
+                    user_access_dict[u.nickname]['auth'] = True
+                    user_access_dict[u.nickname]['rights'] = []
+                    for rep_list in self._alias_to_right.items():
+                        if u in rep_list[1]:    # recipient list
+                            user_access_dict[u.nickname]['rights'].append(rep_list[0])    # right identifier
+                else:
+                    user_access_dict[u.nickname['auth']] = False
+
+            json.dump(user_access_dict, f)       
+            
 
     def _check_valid_right_alias(self, alias: str) -> bool:
         if alias not in self._alias_to_right.keys():

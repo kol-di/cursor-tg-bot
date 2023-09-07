@@ -2,7 +2,8 @@ from telethon import TelegramClient
 import asyncio
 import threading
 
-from bot.utils.singleton import Singleton
+from bot.utils.singleton import Singleton 
+from bot.access import UserAccess
 
 
 class BotManager(metaclass=Singleton):
@@ -32,6 +33,10 @@ class BotManager(metaclass=Singleton):
         # create document handler threads
         spawn_document_handlers()
 
+        # enable periodic user_access dump
+        self._loop.create_task(
+            self.periodic_exec(UserAccess().dump_all))
+
         # main loop
         try:
             self._loop.run_until_complete(self.bot.disconnected)
@@ -39,4 +44,13 @@ class BotManager(metaclass=Singleton):
             self.thread_exit_signal.set()
         finally:
             self.bot.disconnect()
+
+    @staticmethod
+    async def periodic_exec(func, timeout=60*60):
+        while True:
+            await asyncio.sleep(timeout)
+            print('about to dump')
+            func()
+            print('dump complete')
+
 
