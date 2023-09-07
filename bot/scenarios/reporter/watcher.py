@@ -1,6 +1,3 @@
-__all__ = []
-
-
 from telethon.errors.rpcerrorlist import PeerIdInvalidError, MessageTooLongError
 
 import time
@@ -10,10 +7,10 @@ from pathlib import Path
 import asyncio
 from concurrent import futures
 
-from bot.launch_bot import bot, user_access, exit_signal
+from bot.manager import BotManager
+from bot.access import UserAccess
 from bot.access import ReportType
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
-
 
 
 class Handler(FileSystemEventHandler):
@@ -23,6 +20,9 @@ class Handler(FileSystemEventHandler):
         self._loop = loop
 
         self.on_created = self.__on_created
+
+        self._bot = BotManager().bot
+        self._user_access = UserAccess()
 
 
     def __on_created(self, file_event):
@@ -34,8 +34,8 @@ class Handler(FileSystemEventHandler):
         report.read_data(file)
         report.cols = REPORTS_PROPERTIES[self._report_type].columns
 
-        for user in user_access.get_authorized_users():
-            if user_access.is_granted(user, self._report_type):
+        for user in self._user_access.get_authorized_users():
+            if self._user_access.is_granted(user, self._report_type):
                 asyncio.create_task(self.__send_report(user, report))
 
 
@@ -46,20 +46,20 @@ class Handler(FileSystemEventHandler):
             if report.size <= rowcount_limit and len(report.cols) <= colcount_limit:
                 try:
                     await asyncio.wait_for(
-                        bot.send_message(
+                        self._bot.send_message(
                             user.nickname, 
                             str(report)), 
                             timeout=timeout)
                     
                 except MessageTooLongError:
                     await asyncio.wait_for(
-                        bot.send_file(
+                        self._bot.send_file(
                             user.nickname, 
                             report.create_file(filename_prefix)), 
                             timeout=timeout)
             else:
                 await asyncio.wait_for(
-                    bot.send_file(
+                    self._bot.send_file(
                         user.nickname, 
                         report.create_file(filename_prefix)), 
                         timeout=timeout)
@@ -74,6 +74,7 @@ class ObserverManager:
         self.report_dir = report_dir
 
         self._observer = None
+        self._exit_signal = None
 
     @property
     def report_dir(self):
@@ -103,13 +104,14 @@ class ObserverManager:
         if path is None:
             raise Exception("No report directory provided")
         
+        self._exit_signal = BotManager().thread_exit_signal
         self._observer = Observer()
         self._observer.schedule(self._handler, path, recursive=True)
 
 
     def run_observer(self):
         self._observer.start()
-        while not exit_signal.is_set():
+        while not self._exit_signal.is_set():
             time.sleep(1)
 
         self._observer.stop()
@@ -136,11 +138,15 @@ def spawn_document_handlers():
     loop = asyncio.get_event_loop()
 
     handler1 = Handler(ReportType.REC_CONTRACTS_NO_ITEMS, loop)
-    observer_manager1 = ObserverManager(handler1, "reports")
+    observer_manager1 = ObserverManager(
+        handler1,
+        "reports_contracts_no_items")
     observer_manager1.create_observer()
 
     handler2 = Handler(ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223, loop)
-    observer_manager2 = ObserverManager(handler2, "reports2")
+    observer_manager2 = ObserverManager(
+        handler2, 
+        "reports_odnopoz_odnolot_ls_no_contract_223")
     observer_manager2.create_observer()
 
     watcher = Watcher([observer_manager1, observer_manager2])

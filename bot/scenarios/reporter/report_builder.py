@@ -8,7 +8,6 @@ from typing import List
 from bot.access import ReportType
 
 
-
 @dataclass(frozen=True)
 class ReportProperties:
     columns: List[int]

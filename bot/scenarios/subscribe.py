@@ -2,9 +2,12 @@ from telethon import events, Button
 import re
 import warnings
 
-from bot.launch_bot import bot, user_access
-from bot.access import User
+from bot.manager import BotManager 
+from bot.access import User, UserAccess
 from bot.access import ReportType, _RECIPIENT_RIGHT_PREFIX
+
+bot = BotManager().bot
+user_access = UserAccess()
 
 
 class InvalidInlineQueryParamWarning(Warning):
@@ -15,8 +18,8 @@ def user_callback(user_id):
     return events.CallbackQuery(chats=user_id)
 
 
-@bot.on(events.CallbackQuery(pattern='all'))
-async def all_subscriptions(event):
+@events.register(events.CallbackQuery(pattern='all'))
+async def all_subscriptions_event_handler(event):
     sender = await event.get_sender()
 
     user = User(sender.username)
@@ -50,8 +53,8 @@ async def all_subscriptions(event):
 
 
 
-@bot.on(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX)))
-async def choose_subscription_event_handler(event):
+@events.register(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX)))
+async def one_subscription_event_handler(event):
     sender = await event.get_sender()
 
     user = User(sender.username)
@@ -90,8 +93,8 @@ async def choose_subscription_event_handler(event):
                 "Теперь вы подписаны на рассылку")
 
 
-@bot.on(events.NewMessage(pattern='/add_remove_subscription'))
-async def choose_subscriptio_event_handler(event):
+@events.register(events.NewMessage(pattern='/add_remove_subscription'))
+async def choose_subscription_event_handler(event):
     sender = await event.get_sender()
     user = User(sender.username)
     if user in user_access.get_authorized_users():
@@ -104,3 +107,8 @@ async def choose_subscriptio_event_handler(event):
                 [Button.inline('Контракты без позиций с неверными статусами', data=ReportType.REC_CONTRACTS_NO_ITEMS),  
                  Button.inline('223 однопозы однолоты ЛС без контрактов в БД', data=ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223)]
             ])
+        
+
+__all__ = ['all_subscriptions_event_handler', 
+       'one_subscription_event_handler', 
+       'choose_subscription_event_handler']

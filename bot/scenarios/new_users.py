@@ -1,12 +1,14 @@
 from telethon import events
 
-from bot.launch_bot import bot
-from bot.launch_bot import user_access
-from bot.access import User
-from bot.launch_bot import ACCESS_CODE
+from bot.manager import BotManager
+from bot.access import User, UserAccess
+from config import ACCESS_CODE
+
+bot = BotManager().bot
+user_access = UserAccess()
 
 
-@bot.on(events.NewMessage(pattern='/enable'))
+@events.register(events.NewMessage(pattern='/enable'))
 async def enable_event_handler(event):
     sender = await event.get_sender()
     user = User(sender.username)
@@ -25,3 +27,6 @@ async def enable_event_handler(event):
                 await conv.send_message('Неверное кодовое слово')
     else:
         await event.reply('Вы уже подключены к рассылке')
+
+
+__all__ = ['enable_event_handler']

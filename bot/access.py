@@ -2,6 +2,9 @@ from typing import List, Union
 import warnings
 from strenum import StrEnum
 
+from bot.utils.singleton import Singleton
+
+
 class User:
     def __init__(self, nickname):
         self.nickname = nickname
@@ -19,9 +22,9 @@ class User:
         return self._authorized
     
 
+
 # used to match ReportType constants by tg bot
 _RECIPIENT_RIGHT_PREFIX = '#REC_'
-
 
 class ReportType(StrEnum):
     # ContractStatus is not null and no ContractItems
@@ -44,7 +47,8 @@ class UserRightsWarning(UserAccessWarning):
 
 warnings.filterwarnings(action='ignore', category=UserRightsWarning)
 
-class UserAccess:
+
+class UserAccess(metaclass=Singleton):
 
     def __init__(self):
         # all users who tried to access the bot
