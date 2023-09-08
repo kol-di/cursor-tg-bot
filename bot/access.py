@@ -1,12 +1,12 @@
 from typing import List, Union
 import warnings
 from strenum import StrEnum
-from pathlib import Path
 from collections import defaultdict
 import json
 from json import JSONDecodeError
 
 from bot.utils.singleton import Singleton
+from bot.utils.path_resolution import resolve
 
 
 class User:
@@ -60,7 +60,7 @@ warnings.filterwarnings(action='ignore', category=UserRightsWarning)
 class UserAccess(metaclass=Singleton):
 
     def __init__(self):
-        self._dump_filename = '.user_access_dump.json'
+        self._dump_filename = 'user_access_dump.json'
 
         # all users who tried to access the bot
         self._users: List[User] = []
@@ -161,10 +161,11 @@ class UserAccess(metaclass=Singleton):
         return user in self._alias_to_right[alias]
     
 
-    def dump_all(self, input_path=None):
-        path = self._construct_path(
-            input_path,
-            self._dump_filename)
+    def dump_all(self):
+        path = resolve(
+            self._dump_filename, 
+            caller_path=__file__, 
+            dir=False)
 
         # write user access data
         with open(path, 'w+') as f:
@@ -183,12 +184,11 @@ class UserAccess(metaclass=Singleton):
             json.dump(user_access_dict, f)
 
 
-    def recover_from_dump(self, input_path=None):
-        path = self._construct_path(
-            input_path,
-            self._dump_filename)
-        if not path.exists():   # on startup path doesnt exist
-            return
+    def recover_from_dump(self):
+        path = resolve(
+            self._dump_filename, 
+            caller_path=__file__,
+            dir=False)
 
         with open(path) as f:
             dump_content = f.read()
@@ -216,17 +216,4 @@ class UserAccess(metaclass=Singleton):
     def _to_list(users: Union[List[User], User]):
         if isinstance(users, User):
             return [users]
-        return users
-    
-    @staticmethod
-    def _construct_path(input_path, candidate_path):
-        if input_path is None:
-            input_path = candidate_path
-
-        path = Path(input_path)
-        if not path.exists():
-            path = Path(__file__).parent / input_path
-        if path.is_dir():
-            path = path / candidate_path
-
-        return path
+        return users   

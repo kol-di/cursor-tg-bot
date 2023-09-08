@@ -10,6 +10,7 @@ from concurrent import futures
 from bot.manager import BotManager
 from bot.access import UserAccess
 from bot.access import ReportType
+from bot.utils.path_resolution import resolve
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
 
@@ -82,20 +83,8 @@ class ObserverManager:
     
     @report_dir.setter
     def report_dir(self, input_path):
-        path = Path(input_path)
-        if path.exists():
-            pass
-        else:
-            path = Path(__file__).parent / input_path
-            if path.exists():
-                pass
-            else:
-                raise Exception("Invalid path")
-            
-        if path.is_dir():
-            self._report_dir = path
-        else:
-            raise Exception("Path should be a directory")
+        path = resolve(input_path, caller_path=__file__, dir=True)    
+        self._report_dir = path
         
 
     def create_observer(self, path=None):
@@ -140,13 +129,13 @@ def spawn_document_handlers():
     handler1 = Handler(ReportType.REC_CONTRACTS_NO_ITEMS, loop)
     observer_manager1 = ObserverManager(
         handler1,
-        "reports_contracts_no_items")
+        r"reports_contracts_no_items")
     observer_manager1.create_observer()
 
     handler2 = Handler(ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223, loop)
     observer_manager2 = ObserverManager(
         handler2, 
-        "reports_odnopoz_odnolot_ls_no_contract_223")
+        r"reports_odnopoz_odnolot_ls_no_contract_223")
     observer_manager2.create_observer()
 
     watcher = Watcher([observer_manager1, observer_manager2])
