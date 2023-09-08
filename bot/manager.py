@@ -41,6 +41,7 @@ class BotManager(metaclass=Singleton):
         try:
             self._loop.run_until_complete(self.bot.disconnected)
         except (KeyboardInterrupt, SystemExit):
+            print("Exiting")
             self.thread_exit_signal.set()
             UserAccess().dump_all()
         finally:

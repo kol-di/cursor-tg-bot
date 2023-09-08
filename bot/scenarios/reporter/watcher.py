@@ -27,6 +27,7 @@ class Handler(FileSystemEventHandler):
 
 
     def __on_created(self, file_event):
+        print(f'Found new report: {file_event.src_path}')
         asyncio.run_coroutine_threadsafe(self.__send_reports(file_event.src_path), self._loop)
 
 
@@ -96,6 +97,7 @@ class ObserverManager:
         self._exit_signal = BotManager().thread_exit_signal
         self._observer = PollingObserver()
         self._observer.schedule(self._handler, path, recursive=True)
+        print('Observer created')
 
 
     def run_observer(self):
@@ -103,6 +105,7 @@ class ObserverManager:
         while not self._exit_signal.is_set():
             time.sleep(1)
 
+        print('Observer destroyed')
         self._observer.stop()
         self._observer.join()
 

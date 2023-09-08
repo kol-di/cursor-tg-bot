@@ -23,6 +23,7 @@ async def enable_event_handler(event):
             if code == ACCESS_CODE:
                 user_access.add_authorized(user)
                 await conv.send_message('Активация успешна')
+                print(f"New authenticated user: {user.nickname}")
             else:
                 await conv.send_message('Неверное кодовое слово')
     else:

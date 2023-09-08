@@ -39,12 +39,14 @@ async def all_subscriptions_event_handler(event):
                         user_access.remove_acces(user, right_alias)
                         await all_callback.delete()
                         await conv.send_message("Вы отписались от всех рассылок")
+                        print(f'User {user.nickname} unsubscribed from all')
                         conv.cancel()
                 case 's':
                     for right_alias in user_access._alias_to_right.keys():
                         user_access.grant_acces(user, right_alias)
                         await all_callback.delete()
                         await conv.send_message("Вы подписалсиь на все рассылки")
+                        print(f'User {user.nickname} subscribed to all')
                         conv.cancel()
                 case _ as var:
                     warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
@@ -77,6 +79,7 @@ async def one_subscription_event_handler(event):
                         user_access.remove_acces(user, access_right)
                         await del_callback.delete()
                         await conv.send_message('Рассылка отменена')
+                        print(f'User {user.nickname} unsubscribed from {access_right}')
                         conv.cancel()
                     case 'n':
                         await del_callback.delete()
@@ -91,6 +94,7 @@ async def one_subscription_event_handler(event):
             await bot.send_message(
                 sender, 
                 "Теперь вы подписаны на рассылку")
+            print(f'User {user.nickname} subscribed to {access_right}')
 
 
 @events.register(events.NewMessage(pattern='/add_remove_subscription'))
