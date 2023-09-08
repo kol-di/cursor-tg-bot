@@ -1,6 +1,7 @@
 from telethon import TelegramClient
 import asyncio
 import threading
+from pathlib import Path
 
 from bot.utils.singleton import Singleton 
 from bot.access import UserAccess
@@ -8,7 +9,9 @@ from bot.access import UserAccess
 
 class BotManager(metaclass=Singleton):
     def __init__(self, api_id, api_hash, bot_token):
-        self.bot = TelegramClient('bot', api_id=api_id, api_hash=api_hash).start(bot_token=bot_token)
+        import __main__
+        session_path = str(Path(__main__.__file__).parent / 'bot.session')
+        self.bot = TelegramClient(session_path, api_id=api_id, api_hash=api_hash).start(bot_token=bot_token)
         self.thread_exit_signal = threading.Event()
 
         self._loop = asyncio.get_event_loop()
