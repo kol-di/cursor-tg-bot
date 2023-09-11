@@ -3,7 +3,7 @@ import asyncio
 import threading
 from pathlib import Path
 
-from bot.utils.singleton import Singleton 
+from utils.singleton import Singleton 
 from bot.access import UserAccess
 
 

@@ -5,8 +5,8 @@ from collections import defaultdict
 import json
 from json import JSONDecodeError
 
-from bot.utils.singleton import Singleton
-from bot.utils.path_resolution import resolve
+from utils.singleton import Singleton
+from utils.path_resolution import resolve
 
 
 class User:

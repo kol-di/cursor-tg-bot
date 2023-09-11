@@ -14,7 +14,7 @@ def create_bot_manager(api_id, api_hash, bot_token):
 
 def create_server_connection(address, database, username, password):
     connection_string = \
-        f'DRIVER={{SQL Server}};SERVER={address};DATABASE={database};UID={username};PWD={password}'
+        f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={address};DATABASE={database};UID={username};PWD={password};Encrypt=no'
     return Server(connection_string)
 
 

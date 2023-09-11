@@ -1,9 +1,9 @@
 import pyodbc
 
-from bot.utils import Singleton
+from utils.singleton import Singleton
 
 
-class Server(metaclass=Singleton):
+class Server():
     def __init__(self, connection_string):
         self._conn = pyodbc.connect(
             connection_string)

@@ -10,7 +10,7 @@ from concurrent import futures
 from bot.manager import BotManager
 from bot.access import UserAccess
 from bot.access import ReportType
-from bot.utils.path_resolution import resolve
+from utils.path_resolution import resolve
 from .report_builder import ReportBuilder, REPORTS_PROPERTIES
 
 
