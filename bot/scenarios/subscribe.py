@@ -1,6 +1,7 @@
 from telethon import events, Button
 import re
 import warnings
+from functools import cache
 
 from bot.manager import BotManager 
 from db.connection import ServerConnection
@@ -126,6 +127,7 @@ async def one_subscription_event_handler_cat(event):
         print(f'User {username} subscribed to {access_right}')
 
 
+@cache
 def _create_buttons(buttons_in_row=2):
     btns = []
     # button to choose all
