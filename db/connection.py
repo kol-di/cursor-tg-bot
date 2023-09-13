@@ -270,6 +270,38 @@ END
             cursor.execute(f"SELECT {columns} FROM {self._report_category_tbl}")
             report_categories = cursor.fetchall()
         return report_categories
+    
+    def get_users_granted(self, report):
+        with self.new_cursor() as cursor:
+            cursor.execute(
+f"""
+{self.__snippet_report_fk(report)}
+
+SELECT u.Nickname
+FROM {self._subscription_tbl} s
+JOIN {self._user_tbl} u
+ON s.User_FK = u.User_ID
+JOIN {self._report_tbl} r
+ON r.Report_ID = s.Report_FK
+WHERE r.Name = {report}
+
+UNION
+SELECT u.Nickname
+FROM {self._subscription_tbl} s
+JOIN {self._user_tbl} u
+ON s.User_FK = u.User_ID
+JOIN {self._report_tbl} r
+ON r.ReportCategory_FK = s.ReportCategory_FK
+WHERE r.Name = {report}
+""")
+
+    
+    def execute_sp(self, sp):
+        with self.new_cursor() as cursor:
+            cursor.execute(sp)
+            res = cursor.fetchall()
+            columns = cursor.description
+        return res, columns
 
 
     def __snippet_user_fk(self, nick):

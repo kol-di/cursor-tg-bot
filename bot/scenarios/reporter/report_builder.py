@@ -65,3 +65,15 @@ class ReportBuilder:
         # convert integers columns to strings for clear representation in excel
         int_types = self._data.select_dtypes(include=[int])
         self._data[int_types.columns] = int_types.astype(str)
+
+    @classmethod
+    def from_db(cls, *args, **kwargs):
+        data = kwargs.pop('data')
+        columns = kwargs.pop('columns')
+
+        inst = cls.__init__(*args, **kwargs)
+        inst.cols = columns
+        inst._data = pd.DataFrame.from_records(data)
+
+        return inst
+
