@@ -195,6 +195,7 @@ SELECT
     @user_fk, 
     Report_ID 
 FROM {self._report_tbl}
+WHERE ReportCategory_FK is NULL
 """)        
 
     def remove_all(self, nick):
