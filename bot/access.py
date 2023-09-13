@@ -7,6 +7,7 @@ from json import JSONDecodeError
 
 from utils.singleton import Singleton
 from utils.path_resolution import resolve
+from db.connection import ServerConnection
 
 
 class User:
@@ -33,13 +34,17 @@ class User:
 
 
 # used to match ReportType constants by tg bot
-_RECIPIENT_RIGHT_PREFIX = '#REC_'
+_RECIPIENT_RIGHT_PREFIX_REP = '#REP_'
+_RECIPIENT_RIGHT_PREFIX_CAT = '#CAT_'
+
 
 class ReportType(StrEnum):
     # ContractStatus is not null and no ContractItems
-    REC_CONTRACTS_NO_ITEMS = _RECIPIENT_RIGHT_PREFIX + 'ContractsNoItems'
+    REC_CONTRACTS_NO_ITEMS = _RECIPIENT_RIGHT_PREFIX_REP + 'ContractsNoItems'
     # 223 Однопоз однолот с типом лс без контракта
-    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223 = _RECIPIENT_RIGHT_PREFIX + 'OdnopozOdnolotLsNoContract223'
+    REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223 = _RECIPIENT_RIGHT_PREFIX_REP + 'OdnopozOdnolotLsNoContract223'
+    # test
+    CONTRACTS_W_POS_NOT_ALL_LINKED = _RECIPIENT_RIGHT_PREFIX_REP + 'ContractsWPosNotAllLinkedWrongStatus'
 
 
 class UserAccessWarning(Warning):
@@ -58,6 +63,7 @@ warnings.filterwarnings(action='ignore', category=UserRightsWarning)
 
 
 class UserAccess(metaclass=Singleton):
+
 
     def __init__(self):
         self._dump_filename = 'user_access_dump.json'

@@ -3,11 +3,11 @@ import re
 import warnings
 
 from bot.manager import BotManager 
-from bot.access import User, UserAccess
-from bot.access import ReportType, _RECIPIENT_RIGHT_PREFIX
+from db.connection import ServerConnection
+from bot.access import _RECIPIENT_RIGHT_PREFIX_REP, _RECIPIENT_RIGHT_PREFIX_CAT
 
 bot = BotManager().bot
-user_access = UserAccess()
+conn = ServerConnection()
 
 
 class InvalidInlineQueryParamWarning(Warning):
@@ -21,98 +21,139 @@ def user_callback(user_id):
 @events.register(events.CallbackQuery(pattern='all'))
 async def all_subscriptions_event_handler(event):
     sender = await event.get_sender()
+    username = sender.username
 
-    user = User(sender.username)
+    async with bot.conversation(sender, timeout=60, exclusive=False, replies_are_responses=True) as conv:
+        ask_msg = await conv.send_message(
+            message="Что вы хотите сделать?", 
+            buttons=[
+                Button.inline('Отписаться от всего', data='u'), Button.inline('Подписаться на все', data='s')
+            ])
+        
+        all_callback = await conv.wait_event(user_callback(sender))
+        match all_callback.data.decode():
+            case 'u':
+                conn.remove_all(username)
 
-    if user in user_access.get_authorized_users():
+                await all_callback.delete()
+                await conv.send_message("Вы отписались от всех рассылок")
+                print(f'User {username} unsubscribed from all')
+            case 's':
+                conn.grant_all(username)
+
+                await all_callback.delete()
+                await conv.send_message("Вы подписалсиь на все рассылки")
+                print(f'User {username} subscribed to all')
+            case _ as var:
+                warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
+                await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
+        conv.cancel()
+
+
+@events.register(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX_REP)))
+async def one_subscription_event_handler_rep(event):
+    sender = await event.get_sender()
+    username = sender.username
+
+    access_right = event.data.decode()  # data comes in form of bytes and should be converted
+
+    if conn.is_granted(username, report=access_right):
         async with bot.conversation(sender, timeout=60, exclusive=False, replies_are_responses=True) as conv:
+
             ask_msg = await conv.send_message(
-                message="Что вы хотите сделать?", 
+                message="Вы уже подписаны на эту рассылку. Желаете отменить?", 
                 buttons=[
-                    Button.inline('Отписаться от всего', data='u'), Button.inline('Подписаться на все', data='s')
+                    Button.inline('Да', data='y'), Button.inline('Нет', data='n')
                 ])
             
-            all_callback = await conv.wait_event(user_callback(sender))
-            match all_callback.data.decode():
-                case 'u':
-                    for right_alias in user_access._alias_to_right.keys():
-                        user_access.remove_acces(user, right_alias)
-                        await all_callback.delete()
-                        await conv.send_message("Вы отписались от всех рассылок")
-                        print(f'User {user.nickname} unsubscribed from all')
-                        conv.cancel()
-                case 's':
-                    for right_alias in user_access._alias_to_right.keys():
-                        user_access.grant_acces(user, right_alias)
-                        await all_callback.delete()
-                        await conv.send_message("Вы подписалсиь на все рассылки")
-                        print(f'User {user.nickname} subscribed to all')
-                        conv.cancel()
+            del_callback = await conv.wait_event(user_callback(sender))
+            match del_callback.data.decode():
+                case 'y':
+                    conn.remove_access(username, report=access_right)
+                    await del_callback.delete()
+                    await conv.send_message('Рассылка отменена')
+                    print(f'User {username} unsubscribed from {access_right}')
+                case 'n':
+                    await del_callback.delete()
                 case _ as var:
                     warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
                     await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
-                    conv.cancel()
+            conv.cancel()
+
+    else:
+        conn.grant_access(username, report=access_right)
+        await bot.send_message(
+            sender, 
+            "Теперь вы подписаны на рассылку")
+        print(f'User {username} subscribed to {access_right}')
 
 
-
-@events.register(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX)))
-async def one_subscription_event_handler(event):
+@events.register(events.CallbackQuery(data = re.compile(_RECIPIENT_RIGHT_PREFIX_CAT)))
+async def one_subscription_event_handler_cat(event):
     sender = await event.get_sender()
+    username = sender.username
 
-    user = User(sender.username)
     access_right = event.data.decode()  # data comes in form of bytes and should be converted
 
-    if user in user_access.get_authorized_users():
+    if conn.is_granted(username, report_category=access_right):
+        async with bot.conversation(sender, timeout=60, exclusive=False, replies_are_responses=True) as conv:
 
-        if user_access.is_granted(user, access_right):
-            async with bot.conversation(sender, timeout=60, exclusive=False, replies_are_responses=True) as conv:
+            ask_msg = await conv.send_message(
+                message="Вы уже подписаны на эту рассылку. Желаете отменить?", 
+                buttons=[
+                    Button.inline('Да', data='y'), Button.inline('Нет', data='n')
+                ])
+            
+            del_callback = await conv.wait_event(user_callback(sender))
+            match del_callback.data.decode():
+                case 'y':
+                    conn.remove_access(username, report_category=access_right)
+                    await del_callback.delete()
+                    await conv.send_message('Рассылка отменена')
+                    print(f'User {username} unsubscribed from {access_right}')
+                case 'n':
+                    await del_callback.delete()
+                case _ as var:
+                    warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
+                    await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
+            conv.cancel()
 
-                ask_msg = await conv.send_message(
-                    message="Вы уже подписаны на эту рассылку. Желаете отменить?", 
-                    buttons=[
-                        Button.inline('Да', data='y'), Button.inline('Нет', data='n')
-                    ])
-                
-                del_callback = await conv.wait_event(user_callback(sender))
-                match del_callback.data.decode():
-                    case 'y':
-                        user_access.remove_acces(user, access_right)
-                        await del_callback.delete()
-                        await conv.send_message('Рассылка отменена')
-                        print(f'User {user.nickname} unsubscribed from {access_right}')
-                        conv.cancel()
-                    case 'n':
-                        await del_callback.delete()
-                        conv.cancel()
-                    case _ as var:
-                        warnings.warn(f"Invalid parameter {var}", InvalidInlineQueryParamWarning)
-                        await bot.delete_messages(entity=sender, message_ids=ask_msg.id)
-                        conv.cancel()
+    else:
+        conn.grant_access(username, report_category=access_right)
+        await bot.send_message(
+            sender, 
+            "Теперь вы подписаны на рассылку")
+        print(f'User {username} subscribed to {access_right}')
 
-        else:
-            user_access.grant_acces(user, access_right)
-            await bot.send_message(
-                sender, 
-                "Теперь вы подписаны на рассылку")
-            print(f'User {user.nickname} subscribed to {access_right}')
+
+def _create_buttons(buttons_in_row=2):
+    btns = []
+    btns.append([Button.inline('Все', data='all')])
+
+    report_category_btns = [Button.inline(row[0], data=row[0]) for row in conn.all_report_categories(columns=['Name'])]
+    for btn_row in range(len(report_category_btns) // buttons_in_row + 1):
+        btns.append(report_category_btns[btn_row: btn_row + buttons_in_row])
+
+    report_btns = [Button.inline(row[0], data=row[0]) for row in conn.all_reports(columns=['Name'])]
+    for btn_row in range(len(report_btns) // buttons_in_row + 1):
+        btns.append(report_btns[btn_row: btn_row + buttons_in_row])
+    
+    return btns
 
 
 @events.register(events.NewMessage(pattern='/add_remove_subscription'))
 async def choose_subscription_event_handler(event):
     sender = await event.get_sender()
-    user = User(sender.username)
-    if user in user_access.get_authorized_users():
+    username = sender.username
+
+    if username in conn.get_authorised():
         await bot.send_message(
             sender, 
             message="Выберите рассылку", 
-            buttons=[
-                [Button.inline('Все', data='all')], 
-
-                [Button.inline('Контракты без позиций с неверными статусами', data=ReportType.REC_CONTRACTS_NO_ITEMS),  
-                 Button.inline('223 однопозы однолоты ЛС без контрактов в БД', data=ReportType.REC_ODNOPOZ_ODNOLOT_LS_NO_CONTRACT_223)]
-            ])
+            buttons=_create_buttons())
         
 
 __all__ = ['all_subscriptions_event_handler', 
-       'one_subscription_event_handler', 
+       'one_subscription_event_handler_rep',
+       'one_subscription_event_handler_cat', 
        'choose_subscription_event_handler']

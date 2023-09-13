@@ -23,6 +23,7 @@ class ServerConnection(metaclass=Singleton):
             try:
                 ret = func(self, *args, **kwargs)
             except pyodbc.ProgrammingError:
+                print('CONNECTION LOST. RECONNECTING')
                 if hasattr(self, '_conn'):
                     self._conn = pyodbc.connect(self._connection_string)
                 else:
@@ -45,6 +46,18 @@ class ServerConnection(metaclass=Singleton):
             cursor.execute(f"SELECT Authorised, Nickname FROM {self._user_tbl}")
             users = cursor.fetchall()
         return users
+    
+    def get_authorised(self):
+        with self.new_cursor() as cursor:
+            cursor.execute(f"SELECT Nickname FROM {self._user_tbl} WHERE Authorised = 1")
+            users = [usr[0] for usr in cursor.fetchall()]
+        return users
+
+    def get_unauthorised(self):
+        with self.new_cursor() as cursor:
+            cursor.execute(f"SELECT Nickname FROM {self._user_tbl} WHERE Authorised = 0")
+            users = [usr[0] for usr in cursor.fetchall()]
+        return users
 
     def add_authorized(self, nick):
         cursor = self.new_cursor()
@@ -63,8 +76,7 @@ BEGIN
     INSERT INTO {self._user_tbl} (Authorised, Nickname) 
     VALUES (1, '{nick}')
 END
-"""
-            )
+""")
         except pyodbc.IntegrityError as err:
             cursor.rollback()
             warnings.warn(str(err))
@@ -88,8 +100,7 @@ BEGIN
     INSERT INTO {self._user_tbl} (Authorised, Nickname) 
     VALUES (0, '{nick}')
 END
-"""
-            )
+""")
         except pyodbc.IntegrityError as err:
             cursor.rollback()
             warnings.warn(str(err))
@@ -97,66 +108,182 @@ END
             cursor.commit()
 
     def grant_access(self, nick, report=None, report_category=None):
-        assert report is not None or report_category is not None, "Provide report or report category"
+        if report is None and report_category is None:
+            warnings.warn("Either report or report_category should be specified. Resuming")
+            return
 
         with self.new_cursor() as cursor:
             if report_category is not None:
-                cursor.execute(
+                try:
+                    cursor.execute(
 f"""
-DECLARE @user_fk int
-DECLARE @reportcategory_fk int
-
-SELECT @user_fk=[User_ID] FROM {self._user_tbl} WHERE Nickname = '{nick}'
-SELECT @reportcategory_fk=ReportCategory_ID FROM {self._report_category_tbl} WHERE Name = '{report_category}'
+{self.__snippet_user_fk(nick)}
+{self.__snippet_reportcategory_fk(report_category)}
 
 INSERT INTO {self._subscription_tbl} (User_FK, ReportCategory_FK)
 VALUES
-  (@user_fk, @reportcategory_fk)
-"""
-                )
-            else:
-                cursor.execute(
-f"""
-DECLARE @user_fk int
-DECLARE @report_fk int
+(@user_fk, @reportcategory_fk)
+""")
+                except pyodbc.IntegrityError:
+                    cursor.rollback()
+                    warnings.warn(f"Integrity error for user {nick} and report category {report_category}."
+                                   "Ensure that both exist")
+                else:
+                    cursor.commit()
 
-SELECT @user_fk=[User_ID] FROM {self._user_tbl} WHERE Nickname = '{nick}'
-SELECT @report_fk=Report_ID FROM {self._report_tbl} WHERE Name = '{report}'
+            else:   # if report is not None
+                try:
+                    cursor.execute(
+f"""
+{self.__snippet_user_fk(nick)}
+{self.__snippet_report_fk(report)}
 
 INSERT INTO {self._subscription_tbl} (User_FK, Report_FK)
 VALUES
-  (@user_fk, @report_fk)
-"""
-                )
-            cursor.commit()
+(@user_fk, @report_fk)
+""")
+                except pyodbc.IntegrityError:
+                    cursor.rollback()
+                    warnings.warn(f"Integrity error for user {nick} and report {report}."
+                                   "Ensure that both exist")
+                else:
+                    cursor.commit()
+
 
     def remove_access(self, nick, report=None, report_category=None):
-        assert report is not None or report_category is not None, "Provide report or report category"
+        if report is None and report_category is None:
+            warnings.warn("Either report or report_category should be specified. Resuming")
+            return
 
         with self.new_cursor() as cursor:
             if report_category is not None:
                 cursor.execute(
 f"""
-DECLARE @user_fk int
-DECLARE @reportcategory_fk int
-
-SELECT @user_fk=[User_ID] FROM {self._user_tbl} WHERE Nickname = '{nick}'
-SELECT @reportcategory_fk=ReportCategory_ID FROM {self._report_category_tbl} WHERE Name = '{report_category}'
+{self.__snippet_user_fk(nick)}
+{self.__snippet_reportcategory_fk(report_category)}
 
 DELETE FROM {self._subscription_tbl}
 WHERE [User_FK] = @user_fk AND ReportCategory_FK = @reportcategory_fk
-"""
-                )
+""")
             else:
                 cursor.execute(
 f"""
-DECLARE @user_fk int
-DECLARE @report_fk int
-
-SELECT @user_fk=[User_ID] FROM {self._user_tbl} WHERE Nickname = '{nick}'
-SELECT @report_fk=Report_ID FROM {self._report_tbl} WHERE Name = '{report}'
+{self.__snippet_user_fk(nick)}
+{self.__snippet_report_fk(report)}
 
 DELETE FROM {self._subscription_tbl}
 WHERE [User_FK] = @user_fk AND Report_FK = @report_fk
+""") 
+
+    def grant_all(self, nick):
+        with self.new_cursor() as cursor:
+            cursor.execute(
+f"""
+{self.__snippet_user_fk(nick)}
+
+DELETE FROM {self._subscription_tbl}
+WHERE User_FK = @user_fk
+
+INSERT INTO {self._subscription_tbl} (User_FK, ReportCategory_FK)
+SELECT 
+    @user_fk, 
+    ReportCategory_ID 
+FROM {self._report_category_tbl}
+
+INSERT INTO {self._subscription_tbl} (User_FK, Report_FK)
+SELECT 
+    @user_fk, 
+    Report_ID 
+FROM {self._report_tbl}
+""")        
+
+    def remove_all(self, nick):
+        with self.new_cursor() as cursor:
+            cursor.execute(
+f"""
+{self.__snippet_user_fk(nick)}
+
+DELETE FROM {self._subscription_tbl}
+WHERE User_FK = @user_fk
+""")       
+
+    def is_granted(self, nick, report=None, report_category=None):
+        if report is None and report_category is None:
+            warnings.warn("Either report or report_category should be specified. Resuming")
+            return
+
+        with self.new_cursor() as cursor:
+            if report_category is not None:
+                cursor.execute(
+f"""
+{self.__snippet_user_fk(nick)}
+{self.__snippet_reportcategory_fk(report_category)}
+
+SELECT CASE
+    WHEN EXISTS (
+        SELECT * FROM {self._subscription_tbl} 
+        WHERE User_FK=@user_fk AND ReportCategory_FK=@reportcategory_fk)
+    THEN 1
+    ELSE 0
+END
+""")
+            else:
+                cursor.execute(
+f"""
+{self.__snippet_user_fk(nick)}
+{self.__snippet_report_fk(report)}
+
+SELECT CASE
+    WHEN EXISTS (
+        SELECT * FROM {self._subscription_tbl} 
+        WHERE User_FK=@user_fk AND Report_FK=@report_fk)
+    THEN 1
+    ELSE 0
+END
+""")
+            return bool(cursor.fetchone()[0])
+        
+
+    def all_reports(self, columns=None):
+        if columns is None:
+            columns = '*'
+        else:
+            columns = ', '.join(columns)
+
+        with self.new_cursor() as cursor:
+            cursor.execute(f"SELECT {columns} FROM {self._report_tbl}")
+            reports = cursor.fetchall()
+        return reports
+    
+    def all_report_categories(self, columns=None):
+        if columns is None:
+            columns = '*'
+        else:
+            columns = ', '.join(columns)
+
+        with self.new_cursor() as cursor:
+            cursor.execute(f"SELECT {columns} FROM {self._report_category_tbl}")
+            report_categories = cursor.fetchall()
+        return report_categories
+
+
+    def __snippet_user_fk(self, nick):
+        return \
+f"""
+DECLARE @user_fk int
+SELECT @user_fk=[User_ID] FROM {self._user_tbl} WHERE Nickname = '{nick}'
 """
-                )          
+    
+    def __snippet_report_fk(self, report):
+        return \
+f"""
+DECLARE @report_fk int
+SELECT @report_fk=Report_ID FROM {self._report_tbl} WHERE Name = '{report}'
+"""
+    
+    def __snippet_reportcategory_fk(self, report_category):
+        return \
+f"""
+DECLARE @reportcategory_fk int
+SELECT @reportcategory_fk=ReportCategory_ID FROM {self._report_category_tbl} WHERE Name = '{report_category}'
+"""

@@ -1,7 +1,7 @@
 from bot.manager import BotManager
 from bot.access import UserAccess
 from config import conf
-from db.connection import Server
+from db.connection import ServerConnection
 
 
 def create_user_access():
@@ -15,13 +15,13 @@ def create_bot_manager(api_id, api_hash, bot_token):
 def create_server_connection(address, database, username, password):
     connection_string = \
         f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={address};DATABASE={database};UID={username};PWD={password};Encrypt=no'
-    return Server(connection_string)
+    return ServerConnection(connection_string)
 
 
 if __name__ == '__main__':
     print('Starting execution')
-    create_user_access()
-    create_server_connection(
+    user_access = create_user_access()
+    conn = create_server_connection(
         conf['SERVER']['address'], 
         conf['SERVER']['database'], 
         conf['SERVER']['username'], 

@@ -22,14 +22,16 @@ class BotManager(metaclass=Singleton):
         from bot.scenarios.new_users import enable_event_handler
         from bot.scenarios.subscribe import (
             all_subscriptions_event_handler, 
-            one_subscription_event_handler, 
+            one_subscription_event_handler_rep,
+            one_subscription_event_handler_cat, 
             choose_subscription_event_handler)
 
         # register event handlers
         for handler in [
                 enable_event_handler, 
                 all_subscriptions_event_handler, 
-                one_subscription_event_handler, 
+                one_subscription_event_handler_rep,
+                one_subscription_event_handler_cat, 
                 choose_subscription_event_handler]:
             self.bot.add_event_handler(handler)
 
