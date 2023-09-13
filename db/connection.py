@@ -244,15 +244,19 @@ END
             return bool(cursor.fetchone()[0])
         
 
-    def all_reports(self, columns=None):
+    def all_reports(self, columns=None, no_category=False):
         if columns is None:
             columns = '*'
         else:
             columns = ', '.join(columns)
 
         with self.new_cursor() as cursor:
-            cursor.execute(f"SELECT {columns} FROM {self._report_tbl}")
-            reports = cursor.fetchall()
+            if no_category:
+                cursor.execute(f"SELECT {columns} FROM {self._report_tbl} WHERE ReportCategory_FK is NULL")
+                reports = cursor.fetchall()
+            else:
+                cursor.execute(f"SELECT {columns} FROM {self._report_tbl}")
+                reports = cursor.fetchall()
         return reports
     
     def all_report_categories(self, columns=None):

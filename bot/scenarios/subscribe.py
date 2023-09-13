@@ -27,7 +27,7 @@ async def all_subscriptions_event_handler(event):
         ask_msg = await conv.send_message(
             message="Что вы хотите сделать?", 
             buttons=[
-                Button.inline('Отписаться от всего', data='u'), Button.inline('Подписаться на все', data='s')
+                Button.inline('Подписаться на все', data='s'), Button.inline('Отписаться от всего', data='u')
             ])
         
         all_callback = await conv.wait_event(user_callback(sender))
@@ -128,15 +128,28 @@ async def one_subscription_event_handler_cat(event):
 
 def _create_buttons(buttons_in_row=2):
     btns = []
+    # button to choose all
     btns.append([Button.inline('Все', data='all')])
 
-    report_category_btns = [Button.inline(row[0], data=row[0]) for row in conn.all_report_categories(columns=['Name'])]
-    for btn_row in range(len(report_category_btns) // buttons_in_row + 1):
-        btns.append(report_category_btns[btn_row: btn_row + buttons_in_row])
+    # buttons for report categories
+    report_cat_btns = [Button.inline(row[1], data=row[0]) for row in 
+                       conn.all_report_categories(columns=['Name', 'DisplayName'])]
+    num_rows_report_cat = \
+        len(report_cat_btns) // buttons_in_row + \
+        int(bool(len(report_cat_btns) % buttons_in_row))
+    
+    for row_n in range(num_rows_report_cat):
+        btns.append(report_cat_btns[row_n * buttons_in_row: (row_n + 1) * buttons_in_row])
 
-    report_btns = [Button.inline(row[0], data=row[0]) for row in conn.all_reports(columns=['Name'])]
-    for btn_row in range(len(report_btns) // buttons_in_row + 1):
-        btns.append(report_btns[btn_row: btn_row + buttons_in_row])
+    # buttons for reports
+    report_btns = [Button.inline(row[1], data=row[0]) for row in 
+                   conn.all_reports(columns=['Name', 'DisplayName'], no_category=True)]
+    num_rows_report = \
+        len(report_btns) // buttons_in_row + \
+        int(bool(len(report_btns) % buttons_in_row))
+    
+    for row_n in range(num_rows_report):
+        btns.append(report_btns[row_n * buttons_in_row: (row_n + 1) * buttons_in_row])
     
     return btns
 
