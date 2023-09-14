@@ -283,7 +283,7 @@ JOIN {self._user_tbl} u
 ON s.User_FK = u.User_ID
 JOIN {self._report_tbl} r
 ON r.Report_ID = s.Report_FK
-WHERE r.Name = {report}
+WHERE r.Report_ID = @report_fk
 
 UNION
 SELECT u.Nickname
@@ -292,15 +292,18 @@ JOIN {self._user_tbl} u
 ON s.User_FK = u.User_ID
 JOIN {self._report_tbl} r
 ON r.ReportCategory_FK = s.ReportCategory_FK
-WHERE r.Name = {report}
+WHERE r.Report_ID = @report_fk
 """)
+            res = cursor.fetchall()
+        return res
 
     
     def execute_sp(self, sp):
         with self.new_cursor() as cursor:
-            cursor.execute(sp)
+            cursor.execute(f"EXEC {sp}")
             res = cursor.fetchall()
-            columns = cursor.description
+            # columns = cursor.description
+            columns = list(map(lambda col: col[0], cursor.description))
         return res, columns
 
 

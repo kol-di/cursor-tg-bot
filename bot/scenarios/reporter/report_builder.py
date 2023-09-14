@@ -51,7 +51,7 @@ class ReportBuilder:
         b_buf = BytesIO()
         b_buf.name = "{} {}.xlsx".format(filename_prefix, datetime.now().strftime("%d-%m-%Y %H:%M"))
         writer = ExcelWriter(b_buf, engine='xlsxwriter')
-        data_slice.to_excel(writer, sheet_name='Отчет', index=False)
+        data_slice.to_excel(writer, sheet_name='Отчет', index=False, na_rep='NULL')
         writer.close()
 
         b_buf.seek(0)
@@ -71,9 +71,11 @@ class ReportBuilder:
         data = kwargs.pop('data')
         columns = kwargs.pop('columns')
 
-        inst = cls.__init__(*args, **kwargs)
+        inst = cls(*args, **kwargs)
         inst.cols = columns
-        inst._data = pd.DataFrame.from_records(data)
+        # print(data[:10])
+        inst._data = pd.DataFrame.from_records(data, columns=columns)
+        # print(inst._data[:10])
 
         return inst
 
