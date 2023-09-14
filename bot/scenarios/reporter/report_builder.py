@@ -8,6 +8,7 @@ from typing import List, Optional
 from bot.access import ReportType
 
 
+### Used by Watcher; currently not used
 @dataclass(frozen=True)
 class ReportProperties:
     columns: List[int]
@@ -24,6 +25,7 @@ REPORTS_PROPERTIES = {
         filename_prefix="Однопозы_однолоты_ЛС_без_контракта_223"
     )
 }
+########################################
 
 
 
