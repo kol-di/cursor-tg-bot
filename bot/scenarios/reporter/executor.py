@@ -1,4 +1,5 @@
 from datetime import timedelta
+import datetime
 import asyncio
 from telethon.errors import MessageTooLongError, PeerIdInvalidError
 
@@ -16,8 +17,8 @@ class ReportExecutor:
         self._name = name
         self._display_name = display_name
         self._sp_name = sp_name
-        self._timeout = timeout
-        self._start = start
+        self._timeout = self.abs_time_to_timedelta(timeout)
+        self._start = self.abs_time_to_timedelta(start)
 
     async def run_task(self):
         await asyncio.sleep(self._start.total_seconds())
@@ -26,6 +27,7 @@ class ReportExecutor:
                 data, columns = conn.execute_sp(self._sp_name)
             except Exception as e:
                 raise e
+            
             report = ReportBuilder.from_db(data=data, columns=columns)
             await asyncio.create_task(self.__send_reports(report))
             await asyncio.sleep(self._timeout.total_seconds())
@@ -36,7 +38,7 @@ class ReportExecutor:
             await asyncio.create_task(self.__send_report(user, report))
 
 
-    async def __send_report(self, user, report, timeout=10, rowcount_limit=30, colcount_limit=1):
+    async def __send_report(self, user, report, timeout=60, rowcount_limit=30, colcount_limit=1):
         filename = self._display_name
 
         try:
@@ -67,3 +69,22 @@ class ReportExecutor:
     def __subscribed_users(self):
         users = conn.get_users_granted(self._name)
         return [rec[0] for rec in users]
+    
+
+    @classmethod
+    def create_executors(cls):
+        reports = conn.get_reports()
+        executors = []
+        for rep in reports:
+            inst = cls(*rep)
+            executors.append(inst)
+        return executors
+    
+    @staticmethod
+    def abs_time_to_timedelta(time):
+        return timedelta(
+            hours=time.hour, 
+            minutes=time.minute, 
+            seconds=time.second, 
+            microseconds=time.microsecond
+        )

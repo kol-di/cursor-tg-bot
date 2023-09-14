@@ -305,6 +305,16 @@ WHERE r.Report_ID = @report_fk
             # columns = cursor.description
             columns = list(map(lambda col: col[0], cursor.description))
         return res, columns
+    
+    def get_reports(self):
+        with self.new_cursor() as cursor:
+            cursor.execute(
+f"""
+SELECT Name, DisplayName, SP_Name, Timeout, Start
+FROM {self._report_tbl}
+""")
+            res = cursor.fetchall()
+        return res
 
 
     def __snippet_user_fk(self, nick):
