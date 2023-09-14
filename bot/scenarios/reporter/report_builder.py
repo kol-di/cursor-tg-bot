@@ -3,7 +3,7 @@ from pandas import ExcelWriter
 from io import BytesIO
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from bot.access import ReportType
 
@@ -28,11 +28,15 @@ REPORTS_PROPERTIES = {
 
 
 class ReportBuilder:
-    def __init__(self):
-        self._data = None
+    def __init__(self, df=Optional[pd.DataFrame]):
+        self._data = df
 
-        self.cols = []
-        self.size = 0
+        if df is None:
+            self.cols = []
+            self.size = 0
+        else:
+            self.cols = df.columns
+            self.size = df.shape[0]
 
     def __str__(self):
         try:
@@ -71,11 +75,8 @@ class ReportBuilder:
         data = kwargs.pop('data')
         columns = kwargs.pop('columns')
 
-        inst = cls(*args, **kwargs)
-        inst.cols = columns
-        # print(data[:10])
-        inst._data = pd.DataFrame.from_records(data, columns=columns)
-        # print(inst._data[:10])
+        df = pd.DataFrame.from_records(data, columns=columns)
+        inst = cls(df, *args, **kwargs)
 
         return inst
 

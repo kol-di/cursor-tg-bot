@@ -5,6 +5,7 @@ from pathlib import Path
 
 from utils.singleton import Singleton 
 from bot.access import UserAccess
+from db.connection import ServerConnection
 
 
 class BotManager(metaclass=Singleton):
@@ -15,6 +16,7 @@ class BotManager(metaclass=Singleton):
         self.thread_exit_signal = threading.Event()
 
         self._loop = asyncio.get_event_loop()
+        self._conn = ServerConnection()
     
     def run_until_complete(self):
         # imports inside to prevemt circular import
@@ -37,6 +39,12 @@ class BotManager(metaclass=Singleton):
 
         # create document handler threads
         spawn_document_handlers()
+ 
+        # import inside to prevemt circular import
+        from bot.scenarios.reporter.executor import ReportExecutor
+        # enable report executors
+        for ex in ReportExecutor.create_executors(self.bot, self._conn):
+            self._loop.create_task(ex.run_task())
 
         # enable periodic user_access dump
         self._loop.create_task(
@@ -49,6 +57,7 @@ class BotManager(metaclass=Singleton):
             print("Exiting")
             self.thread_exit_signal.set()
             UserAccess().dump_all()
+            self._conn.close()
         finally:
             self.bot.disconnect()
 

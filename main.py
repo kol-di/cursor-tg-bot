@@ -21,7 +21,7 @@ def create_server_connection(address, database, username, password):
 if __name__ == '__main__':
     print('Starting execution')
     user_access = create_user_access()
-    conn = create_server_connection(
+    create_server_connection(
         conf['SERVER']['address'], 
         conf['SERVER']['database'], 
         conf['SERVER']['username'], 

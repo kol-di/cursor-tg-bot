@@ -1,19 +1,15 @@
 from datetime import timedelta
-import datetime
 import asyncio
 from telethon.errors import MessageTooLongError, PeerIdInvalidError
 
-from db.connection import ServerConnection
-from bot.manager import BotManager
 from .report_builder import ReportBuilder
 
 
-conn = ServerConnection()
-bot = BotManager().bot
-
-
 class ReportExecutor:
-    def __init__(self, name, display_name, sp_name, timeout=timedelta(days=1), start=timedelta(hours=9)):
+    def __init__(self, bot, conn, name, display_name, sp_name, timeout=timedelta(days=1), start=timedelta(hours=9)):
+        self._bot = bot
+        self._conn = conn
+
         self._name = name
         self._display_name = display_name
         self._sp_name = sp_name
@@ -24,7 +20,7 @@ class ReportExecutor:
         await asyncio.sleep(self._start.total_seconds())
         while True:
             try:
-                data, columns = conn.execute_sp(self._sp_name)
+                data, columns = self._conn.execute_sp(self._sp_name)
             except Exception as e:
                 raise e
             
@@ -45,20 +41,20 @@ class ReportExecutor:
             if report.size <= rowcount_limit and len(report.cols) <= colcount_limit:
                 try:
                     await asyncio.wait_for(
-                        bot.send_message(
+                        self._bot.send_message(
                             user, 
-                            str(report)), 
+                            filename + '\n' + str(report)), 
                             timeout=timeout)
                     
                 except MessageTooLongError:
                     await asyncio.wait_for(
-                        bot.send_file(
+                        self._bot.send_file(
                             user, 
                             report.create_file(filename)), 
                             timeout=timeout)
             else:
                 await asyncio.wait_for(
-                    bot.send_file(
+                    self._bot.send_file(
                         user, 
                         report.create_file(filename)), 
                         timeout=timeout)
@@ -67,16 +63,16 @@ class ReportExecutor:
             print("Unable to send message to user: {}".format(user.nickname))
 
     def __subscribed_users(self):
-        users = conn.get_users_granted(self._name)
+        users = self._conn.get_users_granted(self._name)
         return [rec[0] for rec in users]
     
 
     @classmethod
-    def create_executors(cls):
+    def create_executors(cls, bot, conn):
         reports = conn.get_reports()
         executors = []
         for rep in reports:
-            inst = cls(*rep)
+            inst = cls(bot, conn, *rep)
             executors.append(inst)
         return executors
     
