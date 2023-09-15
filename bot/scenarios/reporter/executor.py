@@ -15,6 +15,7 @@ class ReportExecutor:
         self._sp_name = sp_name
         self._timeout = self.abs_time_to_timedelta(timeout)
         self._start = self.abs_time_to_timedelta(start)
+        print(f'created executor {self._display_name}')
 
     async def run_task(self):
         await asyncio.sleep(self._start.total_seconds())
@@ -30,6 +31,7 @@ class ReportExecutor:
 
 
     async def __send_reports(self, report):
+        print(f'sending report {self._display_name}')
         for user in self.__subscribed_users():
             await asyncio.create_task(self.__send_report(user, report))
 
