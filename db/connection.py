@@ -32,7 +32,15 @@ class ServerConnection(metaclass=Singleton):
             return ret
                 
         return wrapper
-        
+    
+    @staticmethod
+    def _rollback_on_exit(func):
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except (KeyboardInterrupt, SystemExit) as err:
+                
+                
     @_reopen_conn
     def new_cursor(self):
         cursor = self._conn.cursor()
