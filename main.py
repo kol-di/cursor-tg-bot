@@ -12,7 +12,7 @@ def create_server_connection(address, database, username, password):
     return ServerConnection(connection_string)
 
 
-if __name__ == '__main__':
+def main():
     print('Starting execution')
     create_server_connection(
         conf['SERVER']['address'], 
@@ -27,4 +27,8 @@ if __name__ == '__main__':
     )
     print('Config read')
     bot_manager.run_until_complete()
+
+
+if __name__ == '__main__':
+    main()
 
